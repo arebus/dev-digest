@@ -1,6 +1,6 @@
 # Mermaid Diagram Examples
 
-Ready-to-use templates tailored to the Quick Blog stack (React + Express + MongoDB + JWT).
+Ready-to-use templates tailored to the Quick Blog stack (React + Fastify + Postgres + JWT).
 
 ---
 
@@ -17,7 +17,7 @@ flowchart TD
     F -->|No| G[Reject file]
     G --> B
     F -->|Yes| H[Save to uploads/blogs/]
-    H --> I[Create Blog document in MongoDB]
+    H --> I[Insert blog row in Postgres]
     I --> J[Return success response]
 ```
 
@@ -29,8 +29,8 @@ flowchart TD
 sequenceDiagram
     actor User
     participant Client as React Client
-    participant Server as Express API
-    participant DB as MongoDB
+    participant Server as Fastify API
+    participant DB as Postgres
 
     User->>Client: Enter credentials
     Client->>Server: POST /api/admin/login
@@ -59,7 +59,7 @@ sequenceDiagram
     participant Auth as Auth Middleware
     participant Val as Validator
     participant Ctrl as Controller
-    participant DB as MongoDB
+    participant DB as Postgres
 
     Client->>RL: POST /api/blog/add
     alt Rate limit exceeded
@@ -163,7 +163,7 @@ flowchart LR
     D -->|≤ 5MB| F[Generate server filename]
     F --> G[blog-timestamp-random.ext]
     G --> H[Save to uploads/blogs/]
-    H --> I[Store path in MongoDB]
+    H --> I[Store path in Postgres]
     I --> J[Return success]
 
     style C fill:#ff6b6b,color:#fff
@@ -177,7 +177,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    A[Express Request] --> B[Route Handler]
+    A[Fastify Request] --> B[Route Handler]
     B --> C{Wrapped in asyncHandler?}
     C -->|Yes| D[Execute controller]
     C -->|No| E[Unhandled rejection risk!]
@@ -196,7 +196,7 @@ flowchart TD
 
 ---
 
-## 8. Class Diagram — Mongoose Models
+## 8. Class Diagram — Drizzle Models
 
 ```mermaid
 classDiagram
@@ -297,15 +297,15 @@ mindmap
       React Router 7
       Axios
     Server
-      Express 5
-      Mongoose 8
+      Fastify 5
+      Drizzle 0.45
       JWT Auth
       Multer uploads
       Rate limiting
     Database
-      MongoDB
+      Postgres 16
       Docker Compose
-      migrate-mongo
+      drizzle-kit
     Features
       Blog CRUD
       Comments
