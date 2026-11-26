@@ -7,6 +7,9 @@ export {
   assemblePrompt,
   wrapUntrusted,
   INJECTION_GUARD,
+  describeSection,
+  type CountTokens,
+  type PromptSectionMeta,
   type PromptParts,
   type AssembledPrompt,
 } from '@devdigest/reviewer-core';

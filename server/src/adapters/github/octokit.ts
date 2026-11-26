@@ -11,8 +11,10 @@ import type {
   OpenPrPayload,
   CommitFilesPayload,
   IssueMeta,
+  FileAtRefResult,
 } from '@devdigest/shared';
 import { withRetry, withTimeout } from '../../platform/resilience.js';
+import { toReadError } from './errors.js';
 
 const TIMEOUT = 30_000;
 
@@ -120,7 +122,9 @@ export class OctokitGitHubClient implements GitHubClient {
         })(),
         TIMEOUT,
       ),
-    );
+    ).catch((err: unknown) => {
+      throw toReadError(err);
+    });
   }
 
   /** linked issue via regex on PR body (#123 / closes #123). */
@@ -354,13 +358,44 @@ export class OctokitGitHubClient implements GitHubClient {
         this.octokit.rest.issues.get({ owner: repo.owner, repo: repo.name, issue_number: n }),
         TIMEOUT,
       ),
-    );
+    ).catch((err: unknown) => {
+      throw toReadError(err);
+    });
     return {
       number: res.data.number,
       title: res.data.title,
       body: res.data.body,
       state: res.data.state,
+      is_pull_request: res.data.pull_request != null,
     };
+  }
+
+  async getFileAtRef(
+    repo: RepoRef,
+    path: string,
+    ref: string,
+    opts: { maxBytes: number },
+  ): Promise<FileAtRefResult> {
+    let data;
+    try {
+      const res = await withRetry(() =>
+        withTimeout(
+          this.octokit.rest.repos.getContent({ owner: repo.owner, repo: repo.name, path, ref }),
+          TIMEOUT,
+        ),
+      );
+      data = res.data;
+    } catch (err) {
+      const failure = toReadError(err);
+      if (failure.reason === 'not_found') return { status: 'not_found' };
+      throw failure;
+    }
+    // A directory comes back as an array; symlinks and submodules have another type.
+    if (Array.isArray(data) || data.type !== 'file') return { status: 'not_file' };
+    if (data.size > opts.maxBytes) return { status: 'too_large' };
+    const bytes = Buffer.from(data.content, 'base64');
+    if (bytes.includes(0)) return { status: 'not_text' };
+    return { status: 'ok', content: bytes.toString('utf8') };
   }
 
   async currentLogin(): Promise<string> {

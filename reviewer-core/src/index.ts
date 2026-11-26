@@ -18,7 +18,16 @@ export {
   INJECTION_GUARD,
   type PromptParts,
   type AssembledPrompt,
+  type PromptIntent,
 } from './prompt.js';
+
+export {
+  describeSection,
+  type CountTokens,
+  type PromptSectionMeta,
+  type PromptSectionName,
+  type PromptSectionSource,
+} from './prompt-sections.js';
 
 // Citation grounding — the mandatory mechanical gate for diff findings.
 export { groundFindings, groundingSummary, type GroundingResult } from './grounding.js';
@@ -45,6 +54,7 @@ export {
   type ReviewEvent,
   type ReviewStrategy,
   type ReviewMode,
+  type PromptCall,
 } from './review/run.js';
 
 // Output: grounded Review → GitHubReviewPayload (body + inline comments + event).

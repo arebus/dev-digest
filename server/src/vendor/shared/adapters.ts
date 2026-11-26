@@ -140,6 +140,11 @@ export interface CommitFilesPayload {
   files: CommitFile[];
 }
 
+/** Outcome of reading one file of a repo at a ref (never throws for "not readable"). */
+export type FileAtRefResult =
+  | { status: 'ok'; content: string }
+  | { status: 'not_found' | 'not_file' | 'too_large' | 'not_text' };
+
 export interface GitHubClient {
   listPullRequests(repo: RepoRef): Promise<PrMeta[]>;
   getPullRequest(repo: RepoRef, n: number): Promise<PrDetail>;
@@ -162,6 +167,13 @@ export interface GitHubClient {
   /** The open PR whose head is `branch`, if any (so re-publish reuses it). */
   findOpenPr(repo: RepoRef, branch: string): Promise<{ url: string } | null>;
   getIssue(repo: RepoRef, n: number): Promise<IssueMeta>;
+  /** Read a text file of `repo` at `ref` via the contents API; regular files only. */
+  getFileAtRef(
+    repo: RepoRef,
+    path: string,
+    ref: string,
+    opts: { maxBytes: number },
+  ): Promise<FileAtRefResult>;
   /** GET /user — for "posting as @user". */
   currentLogin(): Promise<string>;
 }

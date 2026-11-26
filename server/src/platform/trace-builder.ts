@@ -73,12 +73,16 @@ const TOKEN_SECTIONS = [
   'user',
 ] as const;
 
-/** Attach per-section token counts (absent/empty sections count as 0). */
+/**
+ * Attach per-section token counts (absent/empty sections count as 0). `intent`
+ * is counted only when present, so a run without it traces as before.
+ */
 export function withPromptTokens(assembly: PromptAssembly, tokenizer: Tokenizer): PromptAssembly {
   const prompt_tokens: Record<string, number> = {};
   for (const key of TOKEN_SECTIONS) {
     const text = assembly[key];
     prompt_tokens[key] = typeof text === 'string' && text.length > 0 ? tokenizer.count(text) : 0;
   }
+  if (assembly.intent) prompt_tokens.intent = tokenizer.count(assembly.intent);
   return { ...assembly, prompt_tokens };
 }

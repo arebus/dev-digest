@@ -1,4 +1,63 @@
 {
+  "intent": {
+    "title": "Intent",
+    "quoted": "“{intent}”",
+    "confidence": {
+      "stated": "Stated",
+      "partial": "Partial",
+      "inferred": "Inferred · low confidence"
+    },
+    "outdated": "Outdated",
+    "recalculate": "Recalculate",
+    "compute": "Compute intent",
+    "empty": "No intent has been derived for this PR yet.",
+    "loadError": "Couldn’t load the intent.",
+    "retry": "Retry",
+    "inScope": "In scope",
+    "outOfScope": "Out of scope",
+    "notStated": "Not stated",
+    "riskAreas": "Risk areas",
+    "riskTooltip": "{severity} risk: {explanation}",
+    "severity": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "footer": {
+      "read": "Read",
+      "notRead": "Not read",
+      "model": "Model",
+      "cost": "Cost",
+      "computed": "Computed"
+    },
+    "source": {
+      "title": "title",
+      "description": "description",
+      "branch": "branch {ref}",
+      "issue": "issue {ref}",
+      "spec": "spec {ref}",
+      "changedInPr": "{label} (changed in this PR)",
+      "withReason": "{label}: {reason}"
+    },
+    "reason": {
+      "not_found": "not found",
+      "not_file": "not a regular file",
+      "too_large": "too large",
+      "not_text": "not a text file",
+      "invalid_path": "path not allowed",
+      "external_url": "external link",
+      "other_repository": "other repository",
+      "pull_request": "pull request",
+      "directory": "directory",
+      "unsupported": "unsupported link",
+      "unsupported_file": "unsupported file",
+      "limit": "over the limit",
+      "budget": "over the size budget",
+      "empty": "empty",
+      "github_unavailable": "GitHub unavailable",
+      "github_error": "GitHub error"
+    }
+  },
   "finding": {
     "accepted": "accepted",
     "dismissed": "dismissed",

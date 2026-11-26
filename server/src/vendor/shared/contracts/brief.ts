@@ -13,6 +13,37 @@ export const Intent = z.object({
 });
 export type Intent = z.infer<typeof Intent>;
 
+/** How much the intent can be trusted. Computed by code from the sources read, never by the model. */
+export const IntentConfidence = z.enum(['stated', 'partial', 'inferred']);
+export type IntentConfidence = z.infer<typeof IntentConfidence>;
+
+export const IntentRiskKind = z.enum([
+  'security',
+  'auth',
+  'dependency',
+  'performance',
+  'data',
+  'api',
+  'config',
+  'concurrency',
+  'other',
+]);
+export type IntentRiskKind = z.infer<typeof IntentRiskKind>;
+
+/** One input considered for the intent: a reference and what happened to it (never its content). */
+export const IntentSource = z.object({
+  kind: z.enum(['title', 'description', 'branch', 'commits', 'files', 'issue', 'spec', 'url']),
+  ref: z.string(),
+  /** Issues only: `target` = closed by the PR, `mention` = merely referenced. */
+  role: z.enum(['target', 'mention']).nullable(),
+  status: z.enum(['read', 'truncated', 'not_read', 'failed', 'skipped']),
+  reason: z.string().nullable(),
+  changed_in_pr: z.boolean(),
+  /** Characters actually sent to the model. */
+  chars: z.number().int(),
+});
+export type IntentSource = z.infer<typeof IntentSource>;
+
 // ---- Blast radius ----
 export const ChangedSymbol = z.object({
   name: z.string(),

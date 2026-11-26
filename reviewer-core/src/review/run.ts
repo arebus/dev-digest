@@ -7,7 +7,8 @@ import type {
   UnifiedDiff,
 } from '@devdigest/shared';
 import { Review as ReviewSchema } from '@devdigest/shared';
-import { assemblePrompt } from '../prompt.js';
+import { assemblePrompt, type PromptIntent } from '../prompt.js';
+import type { CountTokens, PromptSectionMeta } from '../prompt-sections.js';
 import { groundFindings, groundingSummary } from '../grounding.js';
 import { reduceReviews, scoreFromFindings, sliceDiff } from './reduce.js';
 
@@ -19,7 +20,7 @@ import { reduceReviews, scoreFromFindings, sliceDiff } from './reduce.js';
  * This is the pure core lifted out of the server's `ReviewService.runOneAgent`:
  * assemble prompt → single-pass OR map-reduce per file → reduce → SHARED
  * citation-grounding gate. It performs NO I/O beyond the injected LLM provider
- * (no DB, GitHub, fs, memory retrieval, intent, or persistence) — those stay in
+ * (no DB, GitHub, fs, memory retrieval, intent derivation, or persistence) — those stay in
  * the caller (server persists + streams SSE; runner posts + writes an artifact).
  *
  * Skill bodies / memory / specs are RESOLVED strings here: the caller turns
@@ -33,6 +34,15 @@ export const DEFAULT_REVIEW_MAX_RETRIES = 2;
 
 export type ReviewStrategy = 'auto' | 'single-pass' | 'map-reduce';
 export type ReviewMode = 'single-pass' | 'map-reduce';
+
+export interface PromptCall {
+  sections: PromptSectionMeta[];
+  /** 1-based call number and the number of calls of this review. */
+  chunk: number;
+  chunks: number;
+  /** The file reviewed by this call, or `all files`. */
+  label: string;
+}
 
 /** Progress event emitted during a review (server → SSE bus, runner → log). */
 export interface ReviewEvent {
@@ -71,10 +81,16 @@ export interface ReviewInput {
   /** PR author's description/body (untrusted; truncated + delimiter-wrapped in
       the prompt). Empty/undefined → section omitted. */
   prDescription?: string;
+  /** Derived PR intent (untrusted text + confidence). Sent with every chunk. */
+  intent?: PromptIntent;
   /** Task framing line, e.g. "Review PR #482 …". */
   task?: string;
   /** Override the structured-output retry budget. */
   maxRetries?: number;
+  /** Told what each model call is made of (metadata only), just before it is sent. */
+  onPrompt?: (call: PromptCall) => void;
+  /** Adds token counts to `onPrompt` metadata. */
+  countTokens?: CountTokens;
   /** Override the map-reduce line threshold. */
   mapThresholdLines?: number;
   /**
@@ -135,6 +151,7 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
     callers: input.callers,
     repoMap: input.repoMap,
     prDescription: input.prDescription,
+    intent: input.intent,
     task: input.task,
   };
 
@@ -159,7 +176,7 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
   let costUsd: number | null = 0;
   const raws: string[] = [];
 
-  for (const chunk of chunks) {
+  for (const [i, chunk] of chunks.entries()) {
     // Cancellation checkpoint — stop before the next (expensive) LLM call.
     input.checkCancelled?.();
     // 'map:' prefix only for the map-reduce path (one call per file). In
@@ -169,8 +186,13 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
       mode === 'map-reduce' ? `map: reviewing ${chunk.label}` : `Reviewing ${chunk.label} in one pass`,
       { file: chunk.label },
     );
-    const a = assemblePrompt({ ...promptParts, diff: chunk.diffText });
+    const a = assemblePrompt({
+      ...promptParts,
+      diff: chunk.diffText,
+      ...(input.countTokens ? { countTokens: input.countTokens } : {}),
+    });
     if (mode === 'single-pass') assembly = a.assembly;
+    input.onPrompt?.({ sections: a.sections, chunk: i + 1, chunks: chunks.length, label: chunk.label });
     const res = await input.llm.completeStructured<Review>({
       model: input.model,
       schema: ReviewSchema,

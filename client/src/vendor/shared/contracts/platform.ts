@@ -53,8 +53,8 @@ export const FEATURE_MODELS: FeatureModelDef[] = [
     id: 'review_intent',
     label: 'PR Review · Intent',
     description: 'Derives a PR’s intent and scope before review.',
-    defaultProvider: 'openai',
-    defaultModel: 'gpt-4.1',
+    defaultProvider: 'openrouter',
+    defaultModel: 'deepseek/deepseek-v4-flash',
   },
   {
     id: 'risk_brief',
@@ -217,6 +217,8 @@ export const IssueMeta = z.object({
   title: z.string(),
   body: z.string().nullish(),
   state: z.string(),
+  /** GitHub serves pull requests from the issues API too; true marks one. */
+  is_pull_request: z.boolean().optional(),
 });
 export type IssueMeta = z.infer<typeof IssueMeta>;
 

@@ -34,6 +34,17 @@ export class ExternalServiceError extends AppError {
   }
 }
 
+/** A failed GitHub read, already classified by the adapter so callers never parse HTTP. */
+export class GitHubReadError extends ExternalServiceError {
+  constructor(
+    public readonly reason: 'not_found' | 'transient' | 'permanent',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'GitHubReadError';
+  }
+}
+
 export class ConfigError extends AppError {
   constructor(message: string, details?: unknown) {
     super('config_error', message, 500, details);

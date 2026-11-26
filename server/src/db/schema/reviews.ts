@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { pgTable, uuid, text, integer, jsonb, timestamp, doublePrecision } from 'drizzle-orm/pg-core';
+import type { IntentSource, Risk } from '@devdigest/shared';
 import { now } from './_shared';
 import { workspaces } from './core';
 import { pullRequests } from './pulls';
@@ -52,6 +53,25 @@ export const prIntent = pgTable('pr_intent', {
   intent: text('intent').notNull(),
   inScope: jsonb('in_scope').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
   outOfScope: jsonb('out_of_scope').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  confidence: text('confidence', { enum: ['stated', 'partial', 'inferred'] })
+    .notNull()
+    .default('inferred'),
+  acceptanceCriteria: jsonb('acceptance_criteria')
+    .$type<string[]>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  risks: jsonb('risks').$type<Risk[]>().notNull().default(sql`'[]'::jsonb`),
+  sources: jsonb('sources').$type<IntentSource[]>().notNull().default(sql`'[]'::jsonb`),
+  /** PR head the intent was computed for. */
+  headSha: text('head_sha'),
+  /** Hash of the model inputs; unchanged hash + head = cache hit. */
+  sourcesHash: text('sources_hash'),
+  provider: text('provider'),
+  model: text('model'),
+  tokensIn: integer('tokens_in'),
+  tokensOut: integer('tokens_out'),
+  costUsd: doublePrecision('cost_usd'),
+  computedAt: timestamp('computed_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const prBrief = pgTable('pr_brief', {

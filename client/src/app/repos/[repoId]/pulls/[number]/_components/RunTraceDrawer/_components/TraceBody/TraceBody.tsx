@@ -74,6 +74,9 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
 
       <TraceSection icon="FileText" title={t("trace.promptAssembly")} defaultOpen={false}>
         <PromptBlock label={t("trace.prompt.system")} text={trace.prompt_assembly.system} tokens={pt?.system} color={PROMPT_COLORS.system} />
+        {trace.prompt_assembly.intent != null && (
+          <PromptBlock label={t("trace.prompt.intent")} text={trace.prompt_assembly.intent} tokens={pt?.intent} color={PROMPT_COLORS.intent} />
+        )}
         {trace.prompt_assembly.skills != null && (
           <PromptBlock label={t("trace.prompt.skills")} text={trace.prompt_assembly.skills} tokens={pt?.skills} color={PROMPT_COLORS.skills} />
         )}

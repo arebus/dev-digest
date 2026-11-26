@@ -36,6 +36,13 @@ const EnvSchema = z.object({
   API_ALLOWED_HOSTS: z.string().optional(),
   WEB_PORT: z.coerce.number().int().default(3000),
   DEVDIGEST_CLONE_DIR: z.string().optional(),
+  // Structured `prompt.assembled` records. `verbose` is honoured only on a
+  // local, non-production, non-CI process (see `promptLogMode`).
+  PROMPT_LOG: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.enum(['off', 'summary', 'verbose']).default('summary'),
+  ),
+  CI: z.string().optional(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   // `.env` (and .env.example) ship `LOG_LEVEL=` empty; an empty string is not a
   // valid enum member, so coerce '' → undefined to fall through to the default.
@@ -44,6 +51,10 @@ const EnvSchema = z.object({
     z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).optional(),
   ),
 });
+
+export type PromptLogMode = 'off' | 'summary' | 'verbose';
+
+const LOOPBACK_HOSTS = ['127.0.0.1', 'localhost', '::1'];
 
 export type AppConfig = {
   databaseUrl: string;
@@ -64,6 +75,10 @@ export type AppConfig = {
   secretsPath: string;
   nodeEnv: 'development' | 'test' | 'production';
   logLevel: string;
+  /** Effective prompt logging mode. Env only: no API, UI or DB switch. */
+  promptLog: PromptLogMode;
+  /** `PROMPT_LOG=verbose` was asked for but this process is not local. */
+  promptLogDowngraded: boolean;
   /** Allowed CORS origin for the Next.js dev server. */
   webOrigin: string;
   /** Whether memory/RAG embeddings (OpenAI) are enabled. Default false. */
@@ -79,6 +94,12 @@ export type AppConfig = {
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = EnvSchema.parse(env);
+  const local =
+    parsed.NODE_ENV !== 'production' &&
+    LOOPBACK_HOSTS.includes(parsed.API_HOST) &&
+    !parsed.API_ALLOWED_HOSTS?.trim() &&
+    (!parsed.CI || parsed.CI === 'false');
+  const promptLogDowngraded = parsed.PROMPT_LOG === 'verbose' && !local;
   const cloneDirRaw =
     parsed.DEVDIGEST_CLONE_DIR ?? join(homedir(), '.devdigest', 'workspace');
   const cloneDir = isAbsolute(cloneDirRaw) ? cloneDirRaw : resolve(process.cwd(), cloneDirRaw);
@@ -102,6 +123,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     nodeEnv: parsed.NODE_ENV,
     logLevel: parsed.LOG_LEVEL ?? (parsed.NODE_ENV === 'test' ? 'silent' : 'info'),
     webOrigin: `http://localhost:${parsed.WEB_PORT}`,
+    promptLog: promptLogDowngraded ? 'summary' : parsed.PROMPT_LOG,
+    promptLogDowngraded,
     embeddingsEnabled: parsed.EMBEDDINGS_ENABLED === 'true',
     repoIntelEnabled: parsed.REPO_INTEL_ENABLED !== 'false',
   };

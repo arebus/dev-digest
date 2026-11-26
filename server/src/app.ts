@@ -67,6 +67,9 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
 
   const container = new Container(config, db, opts.overrides);
   app.decorate('container', container);
+  if (config.promptLogDowngraded) {
+    app.log.warn('PROMPT_LOG=verbose works only on a local, non-production, non-CI API; using summary');
+  }
 
   // Reap runs left 'running' by a previous (now-dead) process — otherwise they
   // show as perpetually "running" in the UI and can't be cancelled (no runner).
