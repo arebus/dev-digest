@@ -7,6 +7,7 @@ Project setup for Claude Code. This file is a map; the behaviour lives in the li
 | [`agents/`](agents/) | Subagent definitions (only agent files go here) |
 | [`skills/`](skills/README.md) | Skill catalog and [Skill routing](skills/README.md#skill-routing) |
 | `hooks/` | [`pr-gate.sh`](hooks/pr-gate.sh): blocks `gh pr create/merge` without a fresh PASS from `/pr-self-review`. Agent guards, wired in each agent's frontmatter and needing `jq`: [`implementer-guard.sh`](hooks/implementer-guard.sh), [`test-writer-guard.sh`](hooks/test-writer-guard.sh), [`arch-reviewer-guard.sh`](hooks/arch-reviewer-guard.sh), [`doc-writer-guard.sh`](hooks/doc-writer-guard.sh) |
+| `scripts/` | Mechanical work without an LLM. [`checks.sh`](scripts/checks.sh): typecheck, tests, contract-copy sync, import boundaries ([rules](scripts/depcruise-boundaries.cjs)). [`review-diff.sh`](scripts/review-diff.sh): file list and diffs for reviewers, without generated files |
 | [`settings.json`](settings.json) | Project settings (wires `pr-gate.sh`) |
 
 ## Agents
@@ -34,8 +35,8 @@ Claude delegates based on each agent's `description`; name the agent to make sur
 | `planner` | Task and its context | `QUESTIONS` or a Development Plan | user, `implementer` |
 | `implementer` | The full approved plan | Implementation Report (`DONE`, `PARTIAL`, `BLOCKED`, `FAILED`) and uncommitted changes | main session, `/pr-self-review` |
 | `test-writer` | Target and the behaviours to cover | `QUESTIONS` or Test Report (`DONE`, `PARTIAL`, `BLOCKED`, `FAILED`) and uncommitted tests | main session |
-| `architecture-reviewer` | `scope`, `files`, `diff` | Architecture Review (`PASS`, `FINDINGS`, `BLOCKED`) | user, main session |
-| `plan-verifier` | Full plan, `files`, `diff`, optional `checks` | Plan Verification (`COMPLETE`, `INCOMPLETE`, `UNVERIFIED`, `BLOCKED`) | user, main session |
+| `architecture-reviewer` | `scope`, `review-diff.sh` outputs, `checks.sh` summary | Architecture Review (`PASS`, `FINDINGS`, `BLOCKED`) | user, main session |
+| `plan-verifier` | Plan, `review-diff.sh` outputs, `checks.sh` summary | Plan Verification (`COMPLETE`, `INCOMPLETE`, `UNVERIFIED`, `BLOCKED`) | user, main session |
 | `doc-writer` | `feature`, `state`, `sources` | `QUESTIONS` or Documentation Report (`DONE`, `PARTIAL`, `BLOCKED`) and uncommitted pages | user, main session |
 | `pr-skill-reviewer` | `skill`, `files`, `diff` | JSON lines or `NONE` | `/pr-self-review` |
 
@@ -78,7 +79,16 @@ flowchart LR
   D -->|docs| W[engineering-insights<br/>WRITE]
 ```
 
-Use `planner` and `implementer` for multi-file work. Small, well-specified edits are cheaper in the main session. `architecture-reviewer` and `plan-verifier` run in a fresh context; pass them the plan and the diff, because they see none of the conversation.
+Use `planner` and `implementer` for multi-file work. Small, well-specified edits are cheaper in the main session. `architecture-reviewer` and `plan-verifier` run in a fresh context; pass them paths, not pasted content, because they see none of the conversation.
+
+Between `implementer` and the reviewers the main session runs:
+
+```sh
+sh .claude/scripts/checks.sh            # add the base branch to compare with it, e.g. main
+sh .claude/scripts/review-diff.sh <out-dir>
+```
+
+Plans carry `REQ-nn` / `NON-nn` ids, and reports quote ids instead of repeating the text.
 
 Both follow [Skill routing](skills/README.md#skill-routing), which includes the skills `/pr-self-review` checks.
 

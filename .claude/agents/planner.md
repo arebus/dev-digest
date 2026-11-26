@@ -38,15 +38,23 @@ Describe deliverables, design and acceptance checks. Give signatures and contrac
 
     # Development Plan: <feature>
     ## Goal & done-when
-    ## Scope / Non-goals
+    ## Requirements            (REQ-01… | one verifiable statement | how it is checked)
+    ## Non-goals               (NON-01…)
     ## Context used            (CLAUDE.md, INSIGHTS.md entries that matter, specs)
     ## Affected modules        (package | path | new or modify | reuse)
     ## Contracts               (zod, API, DB changes; both vendor/shared copies)
     ## Skills for implementation   (skill → rules that apply → steps)
-    ## Steps                   (numbered; each: what · files · skills · tests to add · depends on)
+    ## Steps                   (numbered; each: what · REQ ids · files · skills · tests to add · depends on)
     ## Verification            (exact commands per package, with the directory)
     ## Risks & constraints
     ## Out of scope for implementer   (architecture and security review belong to other agents)
     ## Open questions
+
+Requirement ids are how the plan is verified later, so:
+- every thing that must be true appears exactly once under Requirements, with a stable id; other sections refer to the id instead of restating it;
+- one id per independently checkable statement. Do not split by sentence, and do not repeat an item as a goal, a step and a risk;
+- include the user's own requirements, quoted.
+
+Be brief: tables and one-line items, no repetition between sections.
 
 Reply in the language of the request.

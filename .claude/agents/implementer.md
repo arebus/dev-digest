@@ -29,7 +29,7 @@ Stop and report `Status: BLOCKED` (reason and questions) if there is no plan or 
 - Mark any departure from the plan as `DEVIATION:` with the reason.
 
 ## 4. Verify your own changes
-Run the checks for every package you touched, plus any the plan names:
+Run `sh .claude/scripts/checks.sh` from the repository root: typecheck, tests (server ones with keys isolated), contract-copy sync and import boundaries, one line each. Add whatever else the plan names. The per-package commands, if you need one alone:
 - `client/`: `pnpm typecheck`, `pnpm test`
 - `server/`: `pnpm typecheck`, `pnpm exec vitest run --exclude '**/*.it.test.ts'`; if you touched DB code, `pnpm exec vitest run .it.test` (needs Docker; otherwise SKIPPED with the reason)
 - `reviewer-core/`: `npm test`, `npm run typecheck`; also run the server typecheck, which consumes its source
@@ -48,10 +48,11 @@ Keep every section; write "None" when empty.
     Status: DONE | PARTIAL | BLOCKED | FAILED
     ## Steps               (step # | status | files)
     ## Changes             (path — what and why; DEVIATION: ...)
-    ## Skills applied      (skill → rules followed)
-    ## Verification        (command → PASS | FAIL | SKIPPED, with the key output lines)
+    ## Verification        (the checks.sh summary as printed, plus any other command → PASS | FAIL | SKIPPED)
     ## Not done / blocked
     ## Insight candidates  (for the main session's engineering-insights WRITE)
     ## Next                (/pr-self-review, security review)
+
+Keep the report short: refer to requirement ids instead of restating the plan, and list a change only when the step table does not already say it.
 
 `DONE` requires every step implemented and every required check passing. Reply in the language of the request.

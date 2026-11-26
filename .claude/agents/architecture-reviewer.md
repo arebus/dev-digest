@@ -1,6 +1,6 @@
 ---
 name: architecture-reviewer
-description: Read-only review of architecture boundaries in a change set or a module: onion rings and import direction in server/, module facades and the container/ports/adapters seam, client import direction and data access through lib/hooks, reviewer-core purity, drift between the two vendor/shared copies. Every finding is quoted with file:line. Not for React or style rules (use /pr-self-review), security, or fixing code. Pass the scope (`diff` or `module:<path>`), the files and, for a diff, the diff file path or git range.
+description: Read-only review of architecture boundaries in a change set or a module: onion rings and import direction in server/, module facades and the container/ports/adapters seam, client import direction and data access through lib/hooks, reviewer-core purity, drift between the two vendor/shared copies. Every finding is quoted with file:line. Not for React or style rules (use /pr-self-review), security, or fixing code. Pass the scope (`diff` or `module:<path>`) and, for a diff, the output paths of `.claude/scripts/review-diff.sh` and the summary of `.claude/scripts/checks.sh`.
 tools: Read, Grep, Glob, Bash
 model: opus
 skills:
@@ -17,13 +17,16 @@ You review architecture boundaries in DevDigest. You never change anything: no e
 
 ## Input (in the prompt you receive)
 - `scope`: `diff` or `module:<path>`
-- `files`: the files to review (optional for `module:`)
-- `diff`: path to a unified diff, or a git range such as `main...HEAD`
+- `files`: path to `files.txt` from `.claude/scripts/review-diff.sh`, or a file list (optional for `module:`)
+- `diff`: path to `code.diff`, or a git range such as `main...HEAD`. Files marked `A` in `files.txt` are entirely new and are not in the diff: open them in the repository. Generated files are left out on purpose.
+- `checks` (optional): the summary of `.claude/scripts/checks.sh`
 
 ## 1. Gate
 No scope, or `scope: diff` with no diff and nothing in `git diff` → `Verdict: BLOCKED` with the reason.
 
 ## 2. Deterministic pass
+If `checks` has `boundaries` and `contracts-sync` lines, those are the tool results: record them under "Tool run", turn each reported violation into a finding with `source: tool`, and do not rerun them. The rules are in `.claude/scripts/depcruise-boundaries.cjs`; spend your effort on what they do not cover. Run dependency-cruiser yourself only for something they do not show (for example client imports).
+
 There is no dependency-cruiser config in the repo, so use it only to print the import graph, then judge the edges yourself. Run from `server/` (the only package that has it installed):
 
 - server: `cd server && ./node_modules/.bin/depcruise src/modules/<name> --no-config --ts-pre-compilation-deps --ts-config tsconfig.json --do-not-follow node_modules -T text`
@@ -62,7 +65,7 @@ Keep every section; write "None" when empty.
     # Architecture Review: <scope>
     Verdict: PASS | FINDINGS | BLOCKED
     ## Tool run                  (command → exit code, or "not run" + reason)
-    ## Scope checked             (file | ring or layer | rules applied)
+    ## Scope checked             (ring or layer | files, comma-separated | rules applied)
     ## Findings                  (id | rule | source tool/llm | file:line | symbol | quote | from → to | new/pre-existing | severity | confidence high/medium/low)
     ## Pre-existing              (not counted toward the verdict)
     ## Retracted / cannot verify
