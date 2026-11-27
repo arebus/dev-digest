@@ -1,11 +1,8 @@
 import type { PrFindingPreview } from '@devdigest/shared';
+import { currentReviewIds, type CurrentReviewRow } from '../_shared/current-review.js';
 
-export interface ReviewRow {
-  id: string;
-  prId: string;
-  agentId: string | null;
-  createdAt: Date;
-}
+export type ReviewRow = CurrentReviewRow;
+export { currentReviewIds };
 
 export interface FindingRow {
   id: string;
@@ -23,17 +20,6 @@ export interface FindingRow {
 }
 
 const RATIONALE_MAX = 240;
-
-/** Review ids that make up each PR's CURRENT review: the newest `review` per agent. */
-export function currentReviewIds(rows: ReviewRow[]): string[] {
-  const latest = new Map<string, ReviewRow>(); // key: prId + agentId
-  for (const r of rows) {
-    const key = `${r.prId}:${r.agentId ?? ''}`;
-    const prev = latest.get(key);
-    if (!prev || r.createdAt > prev.createdAt) latest.set(key, r);
-  }
-  return [...latest.values()].map((r) => r.id);
-}
 
 /**
  * Open findings per PR, from the PR's current review (newest per agent). Dismissed

@@ -9,3 +9,4 @@ so specs load only when relevant.
 - [02 — Skills](02-skills.md): reusable skills attached to agents, import preview, prompt injection, trace token accounting, Test Quality Reviewer.
 - [03 — Conventions Extractor](03-conventions.md): scan a repo for house conventions, ground each in code, accept/edit, build one skill; API Contract Reviewer agent + skills.
 - [04 — Intent Layer](04-intent-layer.md): derive a PR's intent from GitHub sources, feed it to review agents, show the Intent card with risk areas.
+- [05 — Smart Diff](05-smart-diff.md): group a PR's files by review role, show current findings inside the diff, toggle back to the original order.

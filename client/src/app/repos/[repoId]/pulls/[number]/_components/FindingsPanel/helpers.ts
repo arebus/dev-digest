@@ -1,5 +1,6 @@
 import type { FindingRecord, Severity } from "@devdigest/shared";
-import { LOW_CONFIDENCE_THRESHOLD, SEVERITY_ORDER } from "./constants";
+import { SEVERITY_RANK } from "@/lib/severity";
+import { LOW_CONFIDENCE_THRESHOLD } from "./constants";
 
 /** Optionally drop low-confidence and non-matching-severity findings, then sort by severity. */
 export function visibleFindings<T extends Pick<FindingRecord, "severity" | "confidence">>(
@@ -11,7 +12,7 @@ export function visibleFindings<T extends Pick<FindingRecord, "severity" | "conf
   if (hideLow) shown = shown.filter((f) => f.confidence >= LOW_CONFIDENCE_THRESHOLD);
   if (severity) shown = shown.filter((f) => f.severity === severity);
   return [...shown].sort(
-    (a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9),
+    (a, b) => (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9),
   );
 }
 

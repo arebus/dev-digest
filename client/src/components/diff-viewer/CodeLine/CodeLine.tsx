@@ -1,11 +1,16 @@
 /* CodeLine — one rendered diff line: gutter number, +/- sign, text, plus the
-   hover "+" affordance, any anchored comment threads, and an inline composer. */
+   hover "+" affordance, any anchored findings and comment threads, and an inline
+   composer. */
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
+import { SEV, SeverityBadge } from "@devdigest/ui";
+import type { FindingRecord } from "@devdigest/shared";
 import { commentTargetFor, type CommentThread, type DiffCommentApi, cs } from "../comments";
 import { type Line } from "../helpers";
-import { s, lineRowFor, lineSignFor } from "../styles";
+import { openFindings, worstSeverity, type DiffFindingApi } from "../findings";
+import { s, lineRowFor, lineSignFor, findingBarFor } from "../styles";
 import { CommentThreadView } from "../CommentThreadView";
 import { InlineComposer } from "../InlineComposer";
 
@@ -14,12 +19,17 @@ export function CodeLine({
   path,
   threads,
   commenting,
+  findings,
+  FindingSlot,
 }: {
   ln: Line;
   path: string;
   threads: CommentThread[];
   commenting?: DiffCommentApi;
+  findings: FindingRecord[];
+  FindingSlot?: DiffFindingApi["FindingSlot"];
 }) {
+  const t = useTranslations("shell");
   const [hover, setHover] = React.useState(false);
   const [composing, setComposing] = React.useState(false);
 
@@ -34,14 +44,20 @@ export function CodeLine({
   const sign = ln.kind === "add" ? "+" : ln.kind === "del" ? "−" : "";
   const target = commenting?.canComment ? commentTargetFor(ln) : null;
   const showAdd = hover && !!target && !composing;
+  const worst = worstSeverity(openFindings(findings));
 
   return (
     <div
+      // Only lines carrying findings are named, so a plain diff adds no group noise.
+      {...(findings.length > 0 && {
+        role: "group",
+        "aria-label": t("diffViewer.lineLabel", { line: ln.newNo ?? "" }),
+      })}
       style={cs.rowWrap}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
-      <div style={lineRowFor(ln.kind)}>
+      <div style={{ ...lineRowFor(ln.kind), ...(worst && findingBarFor(SEV[worst].c)) }}>
         <span className="mono tnum" style={{ ...s.lineNo, position: "relative" }}>
           {showAdd && target && (
             <button
@@ -62,7 +78,20 @@ export function CodeLine({
         <span className="mono" style={s.lineText}>
           {ln.text || " "}
         </span>
+        {worst && (
+          <span style={s.findingPill}>
+            <SeverityBadge severity={worst} />
+          </span>
+        )}
       </div>
+
+      {FindingSlot && findings.length > 0 && (
+        <div style={cs.thread}>
+          {findings.map((f) => (
+            <FindingSlot key={f.id} finding={f} />
+          ))}
+        </div>
+      )}
 
       {commenting &&
         commenting.showComments &&

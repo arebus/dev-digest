@@ -1,10 +1,12 @@
 /* FileCard — one collapsible file in the diff: header (path, +/- stat, comment
-   count) and, when open, its parsed lines plus any outdated comments. */
+   count, findings dot) and, when open, its parsed lines plus any outdated
+   comments and findings that point outside the diff. */
 "use client";
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Icon } from "@devdigest/ui";
+import { Icon, SEV } from "@devdigest/ui";
+import type { FindingRecord } from "@devdigest/shared";
 import type { PrFile } from "@/lib/types";
 import { AUTO_EXPAND_MAX_LINES } from "../constants";
 import { parsePatch, type Line } from "../helpers";
@@ -14,8 +16,15 @@ import {
   partitionThreads,
   type CommentThread,
   type DiffCommentApi,
+  cs,
 } from "../comments";
-import { s, chevronFor } from "../styles";
+import {
+  openFindings,
+  partitionFindings,
+  worstSeverity,
+  type DiffFindingApi,
+} from "../findings";
+import { s, chevronFor, findingDotFor } from "../styles";
 import { CodeLine } from "../CodeLine";
 import { OutdatedComments } from "../OutdatedComments";
 import { disclosureProps } from "@/lib/a11y";
@@ -31,12 +40,26 @@ function threadsForLine(ln: Line, matched: Map<string, CommentThread[]>): Commen
   return out;
 }
 
-export function FileCard({ file, commenting }: { file: PrFile; commenting?: DiffCommentApi }) {
+/** Findings anchored to a given parsed line (new-file side only). */
+function findingsForLine(ln: Line, matched: Map<string, FindingRecord[]>): FindingRecord[] {
+  return keysForLine(ln).flatMap((key) => matched.get(key) ?? []);
+}
+
+export function FileCard({
+  file,
+  commenting,
+  findings,
+}: {
+  file: PrFile;
+  commenting?: DiffCommentApi;
+  findings?: DiffFindingApi;
+}) {
   const t = useTranslations("shell");
   const [open, setOpen] = React.useState(
     (file.additions ?? 0) + (file.deletions ?? 0) <= AUTO_EXPAND_MAX_LINES
   );
   const lines = React.useMemo(() => parsePatch(file.patch), [file.patch]);
+  const renderedKeys = React.useMemo(() => new Set(lines.flatMap(keysForLine)), [lines]);
 
   // Group this file's comments into threads, then split into ones we can anchor
   // to a rendered line vs. "outdated" (GitHub dropped the line / it's not here).
@@ -44,10 +67,17 @@ export function FileCard({ file, commenting }: { file: PrFile; commenting?: Diff
   const { matched, outdated } = React.useMemo(() => {
     if (!comments) return { matched: new Map<string, CommentThread[]>(), outdated: [] };
     const fileThreads = buildThreads(comments.filter((c) => c.path === file.path));
-    const renderedKeys = new Set<string>();
-    for (const ln of lines) for (const k of keysForLine(ln)) renderedKeys.add(k);
     return partitionThreads(fileThreads, renderedKeys);
-  }, [comments, file.path, lines]);
+  }, [comments, file.path, renderedKeys]);
+
+  const fileFindings = findings?.byFile.get(file.path);
+  const { matched: matchedFindings, outside } = React.useMemo(
+    () => partitionFindings(fileFindings ?? [], renderedKeys),
+    [fileFindings, renderedKeys],
+  );
+  const openList = openFindings(fileFindings ?? []);
+  const worst = worstSeverity(openList);
+  const FindingSlot = findings?.FindingSlot;
 
   const commentCount = commenting
     ? commenting.comments.filter((c) => c.path === file.path).length
@@ -61,6 +91,13 @@ export function FileCard({ file, commenting }: { file: PrFile; commenting?: Diff
         <span className="mono" style={s.filePath}>
           {file.path}
         </span>
+        {worst && (
+          <span
+            role="img"
+            aria-label={t("diffViewer.fileHasFindings", { count: openList.length })}
+            style={findingDotFor(SEV[worst].c)}
+          />
+        )}
         <span className="mono tnum" style={s.fileStat}>
           <span style={s.addText}>+{file.additions}</span>{" "}
           <span style={s.delText}>−{file.deletions}</span>
@@ -86,10 +123,22 @@ export function FileCard({ file, commenting }: { file: PrFile; commenting?: Diff
                 path={file.path}
                 threads={threadsForLine(ln, matched)}
                 commenting={commenting}
+                findings={findingsForLine(ln, matchedFindings)}
+                FindingSlot={FindingSlot}
               />
             ))
           )}
           {commenting && commenting.showComments && <OutdatedComments threads={outdated} />}
+          {FindingSlot && outside.length > 0 && (
+            <div style={cs.outdatedWrap}>
+              <span style={cs.outdatedTitle}>
+                {t("diffViewer.findingsOutsideDiff", { count: outside.length })}
+              </span>
+              {outside.map((f) => (
+                <FindingSlot key={f.id} finding={f} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
