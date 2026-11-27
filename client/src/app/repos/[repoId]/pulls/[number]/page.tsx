@@ -17,7 +17,14 @@ import { DiffTab } from "./_components/DiffTab";
 import RunTraceDrawer from "./_components/RunTraceDrawer";
 import { usePullDetail, usePulls } from "../../../../../lib/hooks";
 import { useQueryClient } from "@tanstack/react-query";
-import { usePrReviews, useCancelRun, usePrActiveRuns, usePrRuns, useDeleteRun } from "../../../../../lib/hooks/reviews";
+import {
+  usePrReviews,
+  useCancelRun,
+  usePrActiveRuns,
+  usePrRuns,
+  useDeleteRun,
+  useRefreshReviewsOnRunSettled,
+} from "../../../../../lib/hooks/reviews";
 import { useRefreshIntentOnRunSettled } from "@/lib/hooks/intent";
 import { useActiveRepo, useRepoNotFound } from "../../../../../lib/repo-context";
 import { ApiError } from "../../../../../lib/api";
@@ -50,6 +57,8 @@ export default function PRDetailPage() {
   const reviewRunning = liveRunIds.length > 0;
   // A run may have derived or refreshed the PR intent.
   useRefreshIntentOnRunSettled(prId, liveRunIds);
+  // …and produced a review, shown inline on the Files changed tab.
+  useRefreshReviewsOnRunSettled(prId, liveRunIds);
   const cancel = useCancelRun();
   const invalidateActiveRuns = () => {
     if (prId) qc.invalidateQueries({ queryKey: ["pr-active-runs", prId] });
@@ -167,9 +176,12 @@ export default function PRDetailPage() {
         {tab === "diff" && (
           <DiffTab
             prId={prId}
-            filesCount={pr.files_count}
             files={pr.files}
             canComment={pr.status === "open"}
+            repoFullName={repoFullName}
+            headSha={pr.head_sha}
+            order={search.get("order") === "original" ? "original" : "smart"}
+            onOrderChange={(o) => setParam("order", o === "original" ? "original" : null)}
           />
         )}
       </div>

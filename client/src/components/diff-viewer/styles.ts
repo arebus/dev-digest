@@ -42,6 +42,25 @@ export const s = {
     color: "var(--text-muted)",
     textAlign: "center",
   } satisfies CSSProperties,
+  findingPill: { alignSelf: "flex-start", flexShrink: 0, paddingRight: 12 } satisfies CSSProperties,
+  groupHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "8px 2px",
+    cursor: "pointer",
+  } satisfies CSSProperties,
+  groupLabel: { fontSize: 13, fontWeight: 700, color: "var(--text-primary)" } satisfies CSSProperties,
+  groupHint: {
+    fontSize: 12,
+    color: "var(--text-muted)",
+    flex: 1,
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  } satisfies CSSProperties,
+  groupMeta: { fontSize: 12, color: "var(--text-muted)" } satisfies CSSProperties,
   hunk: {
     fontSize: 12,
     lineHeight: "20px",
@@ -89,4 +108,19 @@ export function lineSignFor(kind: Line["kind"]): CSSProperties {
     color: kind === "add" ? "var(--code-add-text)" : kind === "del" ? "var(--code-del-text)" : "var(--text-muted)",
     flexShrink: 0,
   };
+}
+
+/** Inset left bar marking a line with an open finding (colour = its severity). */
+export function findingBarFor(color: string): CSSProperties {
+  return { boxShadow: `inset 3px 0 0 ${color}` };
+}
+
+/** Header dot marking a file with open findings (colour = the worst severity). */
+export function findingDotFor(color: string): CSSProperties {
+  return { width: 8, height: 8, borderRadius: 99, background: color, flexShrink: 0 };
+}
+
+/** The role colour square in a group header. */
+export function groupSwatchFor(color: string): CSSProperties {
+  return { width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 };
 }

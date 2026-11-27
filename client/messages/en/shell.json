@@ -40,6 +40,8 @@
     "reply": "Reply",
     "viewOnGitHub": "View on GitHub",
     "postedToGitHub": "Posts to GitHub immediately",
-    "outdatedTitle": "{count} comment(s) on older revisions"
+    "outdatedTitle": "{count} comment(s) on older revisions",
+    "fileHasFindings": "{count, plural, one {# open finding} other {# open findings}}",
+    "findingsOutsideDiff": "{count, plural, one {# finding outside the diff} other {# findings outside the diff}}"
   }
 }

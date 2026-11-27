@@ -36,6 +36,8 @@ Entry: `YYYY-MM-DD — claim — why / what to do (`path` · `symbol`)`. No line
 
 - 2026-11-23 — In tests `FormField` labels are not linked to inputs (find by placeholder/display value, not `getByLabelText`) and `Toggle` is `role="switch"` with no accessible name; native DnD works under jsdom with `fireEvent.dragStart/dragOver/drop` if code uses `e.dataTransfer?.` (`SkillsTab`, `SkillCard`).
 - 2026-11-23 — `@devdigest/ui` `Tabs` renders plain `<button>`s (no `role="tab"`) and draws its own bottom border: query tabs with `getByRole("button")` and don't add a second border around it (`vendor/ui/kit/Tabs.tsx`).
+- 2026-11-27 — `@testing-library/user-event` is not installed — write interaction tests with `fireEvent` (`client/package.json`).
+- 2026-11-27 — The seeded `acme/payments-api` PR #482 has no `patch` text, so inline findings there only ever show in the "outside the diff" block — check line anchoring on a real imported PR (`components/diff-viewer/FileCard`).
 
 ## Recurring Errors & Fixes
 <!-- `exact error text` — cause — fix. -->
@@ -65,6 +67,9 @@ Entry: `YYYY-MM-DD — claim — why / what to do (`path` · `symbol`)`. No line
 
 ### 2026-11-26 — ConfigTab prop-sync fix
 - Added how the form resets and what it deliberately does not follow.
+
+### 2026-11-27 — Smart Diff
+- Added the missing user-event dependency and the patch-less seed PR trap. Spec: `server/specs/05-smart-diff.md`.
 
 ## Open Questions
 <!-- - [ ] YYYY-MM-DD — question — look at: … -->

@@ -13,6 +13,7 @@ import type {
   ReviewRunResponse,
   RunEvent,
   RunSummary,
+  SmartDiffResponse,
 } from "@devdigest/shared";
 
 // ---- Active (in-flight) runs — server-side source of truth ----
@@ -56,6 +57,40 @@ export function usePrReviews(prId: string | null | undefined) {
   });
 }
 
+// ---- Smart diff (PR files grouped by review role) ----
+export const smartDiffKey = (prId: string | null | undefined) => ["smart-diff", prId] as const;
+
+export function useSmartDiff(prId: string | null | undefined) {
+  return useQuery({
+    queryKey: smartDiffKey(prId),
+    queryFn: () => api.get<SmartDiffResponse>(`/pulls/${prId}/smart-diff`),
+    enabled: !!prId,
+  });
+}
+
+/**
+ * Refetch reviews and the smart diff when any run of this PR settles. Call it from
+ * the page, not a tab, so it works whichever tab is open.
+ */
+export function useRefreshReviewsOnRunSettled(
+  prId: string | null | undefined,
+  liveRunIds: string[],
+) {
+  const qc = useQueryClient();
+  const seen = React.useRef<{ prId: typeof prId; runIds: string[] }>({ prId, runIds: [] });
+  const key = liveRunIds.join(",");
+
+  React.useEffect(() => {
+    const runIds = key ? key.split(",") : [];
+    const before = seen.current;
+    seen.current = { prId, runIds };
+    if (before.prId === prId && before.runIds.some((id) => !runIds.includes(id))) {
+      qc.invalidateQueries({ queryKey: ["reviews", prId] });
+      qc.invalidateQueries({ queryKey: smartDiffKey(prId) });
+    }
+  }, [prId, key, qc]);
+}
+
 /** Delete one run from the PR's run history (+ its trace). */
 export function useDeleteRun(prId: string | null | undefined) {
   const qc = useQueryClient();
@@ -66,6 +101,7 @@ export function useDeleteRun(prId: string | null | undefined) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pr-runs", prId] });
       qc.invalidateQueries({ queryKey: ["reviews", prId] });
+      qc.invalidateQueries({ queryKey: smartDiffKey(prId) });
     },
   });
 }
@@ -82,7 +118,10 @@ export function useDeleteReview(prId: string | null | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (reviewId: string) => api.del<{ ok: boolean }>(`/reviews/${reviewId}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["reviews", prId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reviews", prId] });
+      qc.invalidateQueries({ queryKey: smartDiffKey(prId) });
+    },
   });
 }
 
@@ -155,7 +194,9 @@ export function useFindingAction() {
         reply ? { reply } : undefined,
       ),
     onSuccess: (_d, { prId }) => {
-      if (prId) qc.invalidateQueries({ queryKey: ["reviews", prId] });
+      if (!prId) return;
+      qc.invalidateQueries({ queryKey: ["reviews", prId] });
+      qc.invalidateQueries({ queryKey: smartDiffKey(prId) });
     },
   });
 }

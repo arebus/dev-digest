@@ -20,6 +20,7 @@ Entry: `YYYY-MM-DD — claim — why / what to do (`path` · `symbol`)`. No line
 - 2026-11-26 — dependency-cruiser resolves npm deps to `node_modules/.pnpm/<pkg>@…/node_modules/<pkg>/…`, so the `^node_modules/drizzle-orm`-style rules proposed in `enforcement.md` would never match — match on the package name, and verify with a known violation before trusting a clean run (`.claude/skills/onion-architecture/references/enforcement.md`).
 - 2026-11-26 — Running `server/node_modules/.bin/depcruise ../client/src --ts-config ../client/tsconfig.json` from `server/` resolves client aliases to `server/src/vendor/shared` (a false cross-package edge) — omit `--ts-config` for other packages (`.claude/agents/architecture-reviewer.md`).
 - 2026-11-26 — Agent files added to `.claude/agents/` are not callable right away (`Agent type '…' not found`); they appeared later in the same session — don't smoke-test a new agent in the turn that creates it.
+- 2026-11-27 — `checks.sh main` on a branch stacked on unmerged commits reports their boundary violations as new (e.g. `conventions/helpers.ts` → `repository.ts`) — run it with the default base `HEAD` to judge only the working-tree change (`.claude/scripts/checks.sh`).
 
 ## Recurring Errors & Fixes
 <!-- `exact error text` — cause — fix. -->
