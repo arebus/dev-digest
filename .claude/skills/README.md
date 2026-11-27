@@ -21,6 +21,20 @@ Reusable AI skills that provide specialized knowledge and workflows. Canonical l
 | [engineering-insights](engineering-insights/SKILL.md) | Shared | Reads & maintains per-module INSIGHTS.md (read at start, log only new learnings at end) |
 | [pr-self-review](pr-self-review/SKILL.md) | Shared | Manual-only pre-PR workflow: matches skills to the diff (all UI skills on `client/`, `onion-architecture` on `server/`), runs parallel `pr-skill-reviewer` subagents, writes a PASS/BLOCK verdict. A hook (`.claude/hooks/pr-gate.sh`) blocks `gh pr create`/`gh pr merge` without a fresh PASS. Does not stop merges made in the GitHub UI or from a plain terminal |
 
+## Skill routing
+
+Which skills apply to which paths. The `planner` and `implementer` agents follow this table ([agents map](../README.md)). So do `test-writer` (the `client/**` and `server/**` rows), `architecture-reviewer` (read-only, over `client/**`, `server/**`, `vendor/shared` and `reviewer-core/**`) and `doc-writer` (`mermaid-diagram` only).
+
+| Paths | Always (`/pr-self-review` checks these) | When relevant |
+|---|---|---|
+| `client/**` | `frontend-ui-architecture`, `react-best-practices`, `next-best-practices`, `react-testing-library` (tests) | `zod`, `typescript-expert` |
+| `server/**` | `onion-architecture` | `fastify-best-practices` (routes, plugins), `drizzle-orm-patterns` (repository, schema), `postgresql-table-design` (new tables, indexes), `zod` (contracts) |
+| `*/src/vendor/shared/**` | `zod`; compare both copies before editing | |
+| `reviewer-core/**` | | `typescript-expert` |
+| anywhere | `engineering-insights` (READ at start) | `mermaid-diagram` (docs only) |
+
+`/pr-self-review` itself checks only the `client/**` and `server/**` rows. The `implementer` agent does not use `security` (separate review) or `pr-self-review` (manual only).
+
 ## What Are Skills?
 
 Skills are modular packages that extend the AI agent with specialized knowledge and workflows. Unlike rules (always applied) or agents (invoked for specific tasks), skills are loaded on-demand when the agent determines they're relevant.

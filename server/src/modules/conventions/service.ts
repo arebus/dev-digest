@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type {
   ConventionBulkAccept,
   ConventionCandidate,
@@ -5,6 +6,8 @@ import type {
   ConventionUpdate,
 } from '@devdigest/shared';
 import type { Container } from '../../platform/container.js';
+import { PromptLog, loadKnownSecrets } from '../../platform/prompt-log.js';
+import type { PinoLike } from '../../platform/run-logger.js';
 import { AppError, NotFoundError } from '../../platform/errors.js';
 import { readContainedFile } from '../../platform/contained-read.js';
 import { loadPromptTemplate, renderTemplate } from '../../platform/prompts.js';
@@ -21,6 +24,7 @@ import {
 import {
   ConventionExtraction,
   buildExtractionMessages,
+  describeExtractionSections,
   groundCandidates,
   normalizeWs,
   toConventionDto,
@@ -53,7 +57,11 @@ export class ConventionsService {
     return (await this.repo.listByRepo(workspaceId, repoId)).map(toConventionDto);
   }
 
-  async extract(workspaceId: string, repoId: string): Promise<ConventionExtractResult> {
+  async extract(
+    workspaceId: string,
+    repoId: string,
+    logger?: PinoLike,
+  ): Promise<ConventionExtractResult> {
     const repo = await this.assertRepo(workspaceId, repoId);
     if (!repo.clonePath) {
       throw new AppError('repo_not_ready', 'The repo is not cloned yet.', 409);
@@ -82,7 +90,7 @@ export class ConventionsService {
       model,
       schema: ConventionExtraction,
       schemaName: EXTRACT_SCHEMA_NAME,
-      messages: buildExtractionMessages(template, files),
+      messages: await this.logPrompt(logger, { provider, model }, template, files),
       temperature: 0,
     });
 
@@ -103,6 +111,31 @@ export class ConventionsService {
       sampled_files: codeFiles.length,
       dropped: ungrounded + (kept.length - fresh.length),
     };
+  }
+
+  /** Record what the prompt is made of, then return the messages. */
+  private async logPrompt(
+    logger: PinoLike | undefined,
+    choice: { provider: string; model: string },
+    template: string,
+    files: SampleFile[],
+  ) {
+    const mode = this.container.config.promptLog;
+    const promptLog = new PromptLog(
+      logger,
+      mode,
+      { correlationId: randomUUID(), feature: 'conventions', ...choice },
+      await loadKnownSecrets(mode, this.container.secrets),
+    );
+    const countTokens = promptLog.verbose
+      ? (text: string) => this.container.tokenizer.count(text)
+      : undefined;
+    promptLog.call(describeExtractionSections(template, files, countTokens), {
+      details: { files: files.map((f) => f.path) },
+      previews: [{ label: 'system_template', text: template }],
+    });
+    promptLog.flush();
+    return buildExtractionMessages(template, files);
   }
 
   /** Build the model input by code: style configs first, then the top-ranked source files. */

@@ -178,6 +178,71 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
     ]);
   }
 
+  // ---- PR #482 intent (idempotent; also fills a DB seeded before the intent layer) ----
+  await db
+    .insert(t.prIntent)
+    .values({
+      prId: pr!.id,
+      intent: 'Add rate limiting to public API endpoints to prevent abuse from unauthenticated clients.',
+      inScope: [
+        'Add middleware for rate limiting',
+        'Apply to /api/public/* routes',
+        'Return 429 with Retry-After header',
+      ],
+      outOfScope: [
+        'Authentication changes',
+        'Adding new endpoints',
+        'Logging / observability for the limiter',
+      ],
+      risks: [
+        {
+          kind: 'auth',
+          title: 'Auth surface touched',
+          explanation: 'The limiter sits in front of public routes that unauthenticated clients can reach.',
+          severity: 'high',
+          file_refs: ['src/api/public/webhooks.ts'],
+        },
+        {
+          kind: 'dependency',
+          title: 'New dependency: ioredis',
+          explanation: 'The limiter keeps its counters in Redis through a new client library.',
+          severity: 'medium',
+          file_refs: ['src/middleware/ratelimit.ts'],
+        },
+        {
+          kind: 'performance',
+          title: 'Adds Redis round-trip per request',
+          explanation: 'Every limited request waits for Redis before it is handled.',
+          severity: 'medium',
+          file_refs: ['src/middleware/ratelimit.ts'],
+        },
+      ],
+      sources: [
+        {
+          kind: 'title',
+          ref: 'title',
+          role: null,
+          status: 'read',
+          reason: null,
+          changed_in_pr: false,
+          chars: pr!.title.length,
+        },
+        {
+          kind: 'description',
+          ref: 'description',
+          role: null,
+          status: 'read',
+          reason: null,
+          changed_in_pr: false,
+          chars: pr!.body?.length ?? 0,
+        },
+      ],
+      confidence: 'partial',
+      model: 'seed',
+      headSha: pr!.headSha,
+    })
+    .onConflictDoNothing();
+
   // ---- built-in agents (the three starter presets) ----
   // Prompt bodies live in ./seed-prompts.ts (mirrored in docs/agent-prompts/*.md).
   const seedAgents: Array<typeof t.agents.$inferInsert> = [

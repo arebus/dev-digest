@@ -34,7 +34,7 @@ export default async function conventionsRoutes(appBase: FastifyInstance) {
     },
     async (req) => {
       const { workspaceId } = await getContext(app.container, req);
-      return service.extract(workspaceId, req.params.id);
+      return service.extract(workspaceId, req.params.id, req.log);
     },
   );
 

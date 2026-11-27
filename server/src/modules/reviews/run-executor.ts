@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { Container } from '../../platform/container.js';
 import type { Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
 import { reviewPullRequest, countBlockers } from '@devdigest/reviewer-core';
@@ -8,7 +9,9 @@ import type { ReviewRepository, FindingRow, PullRow, ReviewRow } from './reposit
 import { REVIEW_STRATEGY } from './constants.js';
 import { taskLine, formatSkillBlocks } from './helpers.js';
 import { withPromptTokens } from '../../platform/trace-builder.js';
+import { PromptLog, loadKnownSecrets } from '../../platform/prompt-log.js';
 import { loadDiff } from './diff-loader.js';
+import type { IntentOutcome } from '../intent/types.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -105,6 +108,13 @@ export class ReviewRunExecutor {
     }
     runLog.info(`Diff ready — ${diff.files.length} changed file(s); starting ${jobs.length} agent run(s)`);
 
+    // Ties the Live Log to the server's `prompt.assembled` records.
+    const correlationId = randomUUID();
+    runLog.info(`correlation id: ${correlationId}`);
+
+    // Derived once per PR and shared by every agent; undefined = review without it.
+    const intent = await this.deriveIntent(workspaceId, pull.id, runLog, correlationId, logger);
+
     for (const { agent, runId } of jobs) {
       const agentStart = Date.now();
       logger?.info(
@@ -112,7 +122,10 @@ export class ReviewRunExecutor {
         `review: agent "${agent.name}" started (${agent.provider}/${agent.model})`,
       );
       try {
-        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog);
+        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, intent, agent, runId, runLog, {
+          correlationId,
+          logger,
+        });
         logger?.info(
           {
             runId,
@@ -141,9 +154,11 @@ export class ReviewRunExecutor {
     pull: PullRow,
     repo: typeof schema.repos.$inferSelect,
     diff: UnifiedDiff,
+    intent: IntentOutcome | undefined,
     agent: AgentRow,
     runId: string,
     parentLog: RunLogger,
+    tracing: { correlationId: string; logger: Logger | undefined },
   ): Promise<RunOutcome> {
     const start = Date.now();
     // Narrow the fanned-out pre-work logger to THIS run; the shared diff/intent
@@ -152,6 +167,7 @@ export class ReviewRunExecutor {
     const runLog = parentLog.forRun(runId, { agent: agent.name });
 
     runLog.info(`Starting review with agent "${agent.name}" (${agent.provider}/${agent.model})`);
+    let promptLog: PromptLog | undefined;
 
     try {
       // Resolve the agent's LLM provider. (container.llm throws if the provider
@@ -183,10 +199,32 @@ export class ReviewRunExecutor {
       const rankNote = repoIntelOn ? await this.buildRankNote(pull.repoId, diff, runLog) : '';
 
       // Skills linked to this agent (ordered by link order); only enabled ones.
-      const skillBlocks = formatSkillBlocks(await this.agents.linkedSkills(agent.id));
+      const linkedSkills = await this.agents.linkedSkills(agent.id);
+      const skillBlocks = formatSkillBlocks(linkedSkills);
       if (skillBlocks.length > 0) runLog.info(`skills: ${skillBlocks.length} enabled skill(s) attached`);
 
       const task = taskLine(pull) + rankNote;
+
+      const mode = this.container.config.promptLog;
+      const log = new PromptLog(
+        tracing.logger,
+        mode,
+        {
+          correlationId: tracing.correlationId,
+          feature: 'review',
+          runId,
+          prId: pull.id,
+          agentId: agent.id,
+          provider: agent.provider,
+          model: agent.model,
+        },
+        await loadKnownSecrets(mode, this.container.secrets),
+      );
+      promptLog = log;
+      const skillNames = linkedSkills
+        .filter((l) => l.skill.enabled)
+        .sort((a, b) => a.order - b.order) // the order formatSkillBlocks sends them in
+        .map((l) => l.skill.name);
 
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
@@ -210,9 +248,27 @@ export class ReviewRunExecutor {
         // PR author's description/body — untrusted; assemblePrompt wraps +
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),
+        // Derived PR intent; omitted when it could not be computed.
+        ...(intent ? { intent: intent.promptIntent } : {}),
         task,
         sessionId: `${repo.owner}/${repo.name}#${pull.number}:${agent.name}`,
         onEvent: (e) => runLog.event(e.kind, e.msg, e.data),
+        ...(log.verbose
+          ? { countTokens: (text: string) => this.container.tokenizer.count(text) }
+          : {}),
+        onPrompt: (call) =>
+          log.call(call.sections, {
+            chunk: call.chunk,
+            chunks: call.chunks,
+            details: {
+              files: call.chunks > 1 ? [call.label] : diff.files.map((f) => f.path),
+              skills: skillNames,
+            },
+            previews: [
+              { label: 'system_prompt', text: agent.systemPrompt },
+              ...skillBlocks.map((text) => ({ label: 'skill' as const, text })),
+            ],
+          }),
         checkCancelled: () => {
           if (this.container.runBus.isCancelled(runId)) throw new RunCancelledError();
         },
@@ -278,15 +334,27 @@ export class ReviewRunExecutor {
           grounding,
         },
         prompt_assembly: withPromptTokens(outcome.assembly, this.container.tokenizer),
-        tool_calls: outcome.chunks.map((c) => ({
-          tool: 'review_file',
-          args: c.label,
-          meta: outcome.mode,
-          ms: Math.round(durationMs / Math.max(outcome.chunks.length, 1)),
-        })),
+        tool_calls: [
+          ...(intent
+            ? [
+                {
+                  tool: 'derive_intent',
+                  args: `confidence=${intent.record.confidence}`,
+                  meta: intent.cached ? 'cached' : 'fresh',
+                  ms: intent.durationMs,
+                },
+              ]
+            : []),
+          ...outcome.chunks.map((c) => ({
+            tool: 'review_file',
+            args: c.label,
+            meta: outcome.mode,
+            ms: Math.round(durationMs / Math.max(outcome.chunks.length, 1)),
+          })),
+        ],
         raw_output: outcome.raw,
         memory_pulled: [],
-        specs_read: [],
+        specs_read: intent?.specsRead ?? [],
         // Persisted log = the run's FULL event buffer (incl. shared pre-work:
         // diff load + intent), not just events recorded inside this method.
         log: runLog.logFor(runId),
@@ -319,6 +387,32 @@ export class ReviewRunExecutor {
         .catch(() => undefined);
       this.container.runBus.complete(runId);
       throw err;
+    } finally {
+      // Also after a failed or cancelled run: the prompt was already sent.
+      promptLog?.flush();
+    }
+  }
+
+  /**
+   * PR intent for this review. Best-effort: any failure is logged as `info` (an
+   * `error` event would toast in the UI) and the review continues without it.
+   */
+  private async deriveIntent(
+    workspaceId: string,
+    prId: string,
+    runLog: RunLogger,
+    correlationId: string,
+    logger: Logger | undefined,
+  ): Promise<IntentOutcome | undefined> {
+    try {
+      return await this.container.prIntent.ensure(workspaceId, prId, {
+        onLog: (kind, msg) => runLog.event(kind, msg),
+        correlationId,
+        ...(logger ? { logger } : {}),
+      });
+    } catch (err) {
+      runLog.info(`intent: skipped — ${(err as Error).message}; reviewing without intent`);
+      return undefined;
     }
   }
 

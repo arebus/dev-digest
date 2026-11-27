@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import type { ChatMessage, ConventionCandidate } from '@devdigest/shared';
-import { INJECTION_GUARD, wrapUntrusted } from '../../platform/prompt.js';
+import {
+  INJECTION_GUARD,
+  describeSection,
+  wrapUntrusted,
+  type CountTokens,
+  type PromptSectionMeta,
+} from '../../platform/prompt.js';
 import { MAX_CANDIDATES, MAX_SNIPPET_CHARS } from './constants.js';
 import type { ConventionRow } from './repository.js';
 
@@ -87,16 +93,35 @@ export function toConventionDto(row: ConventionRow): ConventionCandidate {
   };
 }
 
+type SampleInput = ReadonlyArray<{ path: string; content: string }>;
+
+/** The exact blocks sent, shared by the message builder and its log description. */
+function extractionBlocks(template: string, files: SampleInput) {
+  return {
+    system: `${template}\n\n${INJECTION_GUARD}`,
+    files: files.map((f) => wrapUntrusted(f.path, f.content)),
+  };
+}
+
 /** System prompt (trusted template + shared injection guard) and the untrusted file dump. */
-export function buildExtractionMessages(
-  template: string,
-  files: ReadonlyArray<{ path: string; content: string }>,
-): ChatMessage[] {
-  const dump = files
-    .map((f) => wrapUntrusted(f.path, f.content))
-    .join('\n\n');
+export function buildExtractionMessages(template: string, files: SampleInput): ChatMessage[] {
+  const blocks = extractionBlocks(template, files);
   return [
-    { role: 'system', content: `${template}\n\n${INJECTION_GUARD}` },
-    { role: 'user', content: `Files (${files.length}):\n\n${dump}` },
+    { role: 'system', content: blocks.system },
+    { role: 'user', content: `Files (${files.length}):\n\n${blocks.files.join('\n\n')}` },
+  ];
+}
+
+/** Content-free description of that prompt, for logging. */
+export function describeExtractionSections(
+  template: string,
+  files: SampleInput,
+  countTokens?: CountTokens,
+): PromptSectionMeta[] {
+  const blocks = extractionBlocks(template, files);
+  const opts = countTokens ? { countTokens } : {};
+  return [
+    describeSection('system', 'prompts.conventions+engine.injection_guard', 'trusted', blocks.system, opts),
+    ...blocks.files.map((b) => describeSection('repo_file', 'repo.clone', 'untrusted', b, opts)),
   ];
 }

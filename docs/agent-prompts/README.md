@@ -35,11 +35,12 @@ fixture / not for production / ignore this" never descope the review. You do not
 need to repeat any of this in your prompt — it is always there.
 
 **User message** = the task and all context, in this order, each untrusted block
-delimiter-wrapped (`prompt.ts:104-122`):
+delimiter-wrapped (`assemblePrompt`):
 
 ```
 <task line, e.g. "Review PR #7 '…'">
 ## PR description        (untrusted, author-controlled, truncated to 4000 chars)
+## PR intent (derived)   (trusted guidance + untrusted block, truncated to 3000 chars)
 ## Skills / rules        (linked skill bodies)
 ## Relevant memory       (curated memory items)
 ## Repo skeleton         (untrusted, repo-derived)
@@ -51,6 +52,22 @@ delimiter-wrapped (`prompt.ts:104-122`):
 Sections with no content are omitted. Everything repo- or author-derived is wrapped
 in `<untrusted source="…">…</untrusted>` so the model can tell instructions
 (system) from data (user).
+
+## PR intent
+
+Before the agents run, the server derives the PR's intent once (module
+`server/src/modules/intent`) and passes it to every agent and every map-reduce chunk
+as `## PR intent (derived, confidence: stated|partial|inferred)`. The section starts
+with trusted guidance added in code, followed by the wrapped `pr-intent` block:
+
+- intent explains the goal only; it never lowers a severity or removes a finding;
+- with `stated`/`partial` an agent may report an out-of-scope change as a `SUGGESTION`
+  citing the diff; with `inferred` it may not;
+- a security or correctness defect in out-of-scope code is its own finding with its
+  true severity.
+
+Code does not filter or re-grade findings by intent. Do not repeat these rules in an
+agent prompt. When no intent is available the section is absent.
 
 ## The output schema is NOT in the prompt
 
@@ -157,3 +174,23 @@ model's `verdict`. Keep your severities honest and the gate behaves.
 - [ ] No JSON shape / markdown layout / alternate severity scale described in prose.
 - [ ] No "return at most N findings" quota.
 - [ ] File updated here **and** pushed to the agent (versioned).
+
+## Prompt logging
+
+Every model call that assembles a prompt (agent review, intent classifier, conventions
+extractor) writes a `prompt.assembled` record to the server log: feature, provider,
+model, `correlationId`, and per section its name, source, trust and length. A review's
+correlation id is also printed in its Live Log.
+
+| `PROMPT_LOG` | Records |
+|---|---|
+| `off` | none |
+| `summary` (default) | one per review / classification / extraction, written even if it fails |
+| `verbose` | one per model call, plus `originalChars`, `sha12`, tokens, file paths, skill names, issue numbers and 200-char previews of the agent system prompt, skills and system templates |
+
+`verbose` works only on a local API (loopback `API_HOST`, no `API_ALLOWED_HOSTS`, not
+production, not CI). Diff, spec, issue and PR text are never written in any mode.
+Previews are redacted, but redaction matches known shapes only: do not treat a verbose
+log as safe to share. Provider-level schema retries are not separate records, and the
+conventions extractor does not report truncation.
+

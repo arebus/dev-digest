@@ -32,6 +32,7 @@ Entry: `YYYY-MM-DD — claim — why / what to do (`path` · `symbol`)`. No line
 
 - 2026-11-23 — fflate `unzipSync` `filter` sees `originalSize` before decompressing: use a list pass (filter returns false for all) to pick the one SKILL.md and check its size, then a second pass that decompresses only that entry — keeps scripts in the archive undecompressed (`modules/skills/import.ts`).
 - 2026-11-23 — A per-route `bodyLimit` larger than Fastify's global 1MB works (skills import preview uses 2MB) (`modules/skills/routes.ts`).
+- 2026-11-26 — `OpenRouterProvider.completeStructured` ignores `req.timeoutMs` — wrap the call in `withTimeout` (`reviewer-core/src/llm/openrouter.ts`, `modules/intent/service.ts` · `askModel`).
 
 ## Recurring Errors & Fixes
 <!-- `exact error text` — cause — fix. -->
@@ -39,6 +40,8 @@ Entry: `YYYY-MM-DD — claim — why / what to do (`path` · `symbol`)`. No line
 - 2026-11-19 — Migrations don't run on boot — `pnpm db:migrate` (dev.sh does it).
 - 2026-11-19 — `Could not find a working container runtime strategy` — cause: Docker is Rancher Desktop (socket `~/.rd/docker.sock`), yet `dockerAvailable()` still returns true so `*.it.test.ts` fail instead of skipping — fix: run with `DOCKER_HOST=unix://$HOME/.rd/docker.sock TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock` (`test/helpers/pg.ts`).
 - 2026-11-19 — `pnpm db:generate` fails with `drizzle-kit: exec: node: not found` plus a pnpm "lockfile entries failed verification (minimumReleaseAge)" install error — cause: pnpm's pre-run install check, and nvm's node is not on the agent shell PATH — fix: prepend the nvm node `bin` to PATH and run `./node_modules/.bin/drizzle-kit generate` directly (bypasses the install check).
+- 2026-11-26 — `TypeError: Cannot read properties of undefined (reading 'skills')` in `test/skills.it.test.ts` (flaky, ~1 in 10 full `.it` runs, also on untouched code) — cause (from reading, not proven): `completeAgentRun` runs before `saveRunTrace`, so a test that waits for run status can read the trace too early (`modules/reviews/run-executor.ts` · `runOneAgent`).
+- 2026-11-26 — Review integration tests use real secrets: since the intent step, `reviews.it`/`skills.it` would call GitHub and OpenRouter with local keys — run them with `HOME=<empty dir>` and empty `*_API_KEY`/`GITHUB_TOKEN`, keeping `DOCKER_HOST` built from the real HOME (`adapters/secrets/local.ts`).
 
 ## Session Notes
 <!-- ### YYYY-MM-DD — task, then 1–3 bullets of what was added. -->
@@ -54,6 +57,9 @@ Entry: `YYYY-MM-DD — claim — why / what to do (`path` · `symbol`)`. No line
 
 ### 2026-11-23 — Skill versioning page
 - Added the append-only restore semantics. Spec: `specs/02-skills.md`.
+
+### 2026-11-26 — Intent Layer. Spec: `specs/04-intent-layer.md`
+- Added the OpenRouter timeout gap, the flaky skills trace test and the real-keys hazard in integration tests.
 
 ## Open Questions
 <!-- - [ ] YYYY-MM-DD — question — look at: … -->
