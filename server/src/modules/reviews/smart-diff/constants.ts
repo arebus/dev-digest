@@ -30,6 +30,8 @@ export const ROLE_RULES: readonly RoleRule[] = [
   { role: 'boilerplate', pattern: /\.snap$/ },
   { role: 'boilerplate', pattern: /\.generated\./ },
   { role: 'boilerplate', pattern: /\.min\.js$/ },
+  // drizzle-kit output: SQL files and the meta snapshots.
+  { role: 'boilerplate', pattern: /(^|\/)db\/migrations\// },
   // tests
   { role: 'tests', pattern: /\.(test|spec)\.[cm]?[jt]sx?$/ },
   { role: 'tests', pattern: /(^|\/)(test|tests|__tests__|e2e)\// },

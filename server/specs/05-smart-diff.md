@@ -20,7 +20,7 @@ below and the first match wins; a path that matches nothing is `core`. The patte
 
 | Checked | Role | Matches |
 |---|---|---|
-| 1 | `boilerplate` | `*.lock`, `pnpm-lock.yaml`, `package-lock.json`, `yarn.lock`, `dist/`, `build/`, `__snapshots__/`, `*.snap`, `*.generated.*`, `*.min.js` |
+| 1 | `boilerplate` | `*.lock`, `pnpm-lock.yaml`, `package-lock.json`, `yarn.lock`, `dist/`, `build/`, `__snapshots__/`, `*.snap`, `*.generated.*`, `*.min.js`, `db/migrations/` |
 | 2 | `tests` | `*.test.*` and `*.spec.*` (JS/TS extensions), `test/`, `tests/`, `__tests__/`, `e2e/` |
 | 3 | `wiring` | `index.*` (JS/TS), `*.config.*`, `tsconfig*.json`, `.eslintrc*`, `.env*`, `docker-compose*.yml`/`.yaml`, `.github/`, `.claude/` |
 | 4 | `docs` | `*.md`, `*.mdx`, `docs/`, `README*`, `CHANGELOG*`, `LICENSE*` |

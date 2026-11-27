@@ -19,6 +19,9 @@ const TABLE: [path: string, role: SmartDiffRole, why: string][] = [
   ['server/build/main.js', 'boilerplate', 'build output directory, nested'],
   ['x.min.js', 'boilerplate', 'minified'],
   ['api.generated.ts', 'boilerplate', 'generated'],
+  ['server/src/db/migrations/0011_clammy_madame_hydra.sql', 'boilerplate', 'generated migration'],
+  ['server/src/db/migrations/meta/_journal.json', 'boilerplate', 'generated migration metadata'],
+  ['server/src/db/schema/pulls.ts', 'core', 'the schema is hand-written, unlike its migrations'],
   // Pinned: a snapshot under __tests__ is generated output, so boilerplate beats tests.
   ['src/__tests__/__snapshots__/x.snap', 'boilerplate', 'boilerplate is checked before tests'],
 
