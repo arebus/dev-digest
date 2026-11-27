@@ -3,7 +3,8 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { ORDER_OPTIONS, type DiffOrder } from "./constants";
+import { ORDER_OPTIONS } from "./constants";
+import type { DiffOrder } from "./types";
 import { s, optionFor } from "./styles";
 
 export function OrderToggle({

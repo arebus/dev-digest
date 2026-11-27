@@ -2,9 +2,9 @@
    (never triggers a model call) and an explicit recalculation. */
 "use client";
 
-import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
+import { useOnRunSettled } from "./run-settled";
 import type { PrIntentRecord, PrIntentResponse } from "@devdigest/shared";
 
 export const intentKey = (prId: string | null | undefined) => ["pr-intent", prId] as const;
@@ -35,15 +35,7 @@ export function useRefreshIntentOnRunSettled(
   liveRunIds: string[],
 ) {
   const qc = useQueryClient();
-  const seen = React.useRef<{ prId: typeof prId; runIds: string[] }>({ prId, runIds: [] });
-  const key = liveRunIds.join(",");
-
-  React.useEffect(() => {
-    const runIds = key ? key.split(",") : [];
-    const before = seen.current;
-    seen.current = { prId, runIds };
-    if (before.prId === prId && before.runIds.some((id) => !runIds.includes(id))) {
-      qc.invalidateQueries({ queryKey: intentKey(prId) });
-    }
-  }, [prId, key, qc]);
+  useOnRunSettled(prId, liveRunIds, () => {
+    qc.invalidateQueries({ queryKey: intentKey(prId) });
+  });
 }

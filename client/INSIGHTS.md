@@ -28,6 +28,7 @@ Entry: `YYYY-MM-DD — claim — why / what to do (`path` · `symbol`)`. No line
 - 2026-11-23 — Skill Config/Preview/Versioning live in the right-hand `SkillPanel` on `/skills`, NOT a `/skills/:id` page (deliberately removed): the panel is re-keyed per skill (`key={selected.id}`) so tab and form state reset on selection (`app/skills/_components/SkillsView/_components/SkillPanel`).
 
 - 2026-11-26 — `ConfigTab` resets its form by remounting on `key={skill.version}`, not by a prop-sync effect (which wiped drafts when the card toggle refetched the list); name/description/type edits made elsewhere don't bump the version, so an open form won't follow them (`SkillPanel/_components/ConfigTab`).
+- 2026-11-27 — Severity sort weight lives only in `src/lib/severity.ts` and "a run finished" detection only in `src/lib/hooks/run-settled.ts` — reuse them instead of adding copies (`SEVERITY_RANK`, `useOnRunSettled`).
 
 ## Tool & Library Notes
 <!-- Dependency / CLI quirks, versions. -->

@@ -7,6 +7,17 @@ import type {
   SmartDiff,
   SmartDiffRole,
 } from "@devdigest/shared";
+import type { DiffOrder } from "./_components/OrderToggle";
+
+/** `?order=` value → diff order; anything but "original" means smart. */
+export function parseDiffOrder(param: string | null): DiffOrder {
+  return param === "original" ? "original" : "smart";
+}
+
+/** Diff order → `?order=` value; the default (smart) is left out of the URL. */
+export function diffOrderParam(order: DiffOrder): string | null {
+  return order === "original" ? "original" : null;
+}
 
 /**
  * Findings of the PR's current review: the newest `review` per agent. Dismissed

@@ -6,6 +6,7 @@ import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, API_BASE } from "../api";
 import { notify } from "../toast";
+import { useOnRunSettled } from "./run-settled";
 import type {
   FindingActionKind,
   PrReviewComment,
@@ -77,18 +78,10 @@ export function useRefreshReviewsOnRunSettled(
   liveRunIds: string[],
 ) {
   const qc = useQueryClient();
-  const seen = React.useRef<{ prId: typeof prId; runIds: string[] }>({ prId, runIds: [] });
-  const key = liveRunIds.join(",");
-
-  React.useEffect(() => {
-    const runIds = key ? key.split(",") : [];
-    const before = seen.current;
-    seen.current = { prId, runIds };
-    if (before.prId === prId && before.runIds.some((id) => !runIds.includes(id))) {
-      qc.invalidateQueries({ queryKey: ["reviews", prId] });
-      qc.invalidateQueries({ queryKey: smartDiffKey(prId) });
-    }
-  }, [prId, key, qc]);
+  useOnRunSettled(prId, liveRunIds, () => {
+    qc.invalidateQueries({ queryKey: ["reviews", prId] });
+    qc.invalidateQueries({ queryKey: smartDiffKey(prId) });
+  });
 }
 
 /** Delete one run from the PR's run history (+ its trace). */

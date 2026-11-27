@@ -1,4 +1,4 @@
-export type DiffOrder = "smart" | "original";
+import type { DiffOrder } from "./types";
 
 export const ORDER_OPTIONS = [
   { value: "smart", labelKey: "smartDiff.smartOrder" },

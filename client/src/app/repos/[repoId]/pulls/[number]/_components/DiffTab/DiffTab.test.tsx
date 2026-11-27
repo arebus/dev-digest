@@ -124,12 +124,12 @@ describe("DiffTab", () => {
     // The lock file is hidden in the collapsed Boilerplate group.
     expect(screen.queryByText("pnpm-lock.yaml")).not.toBeInTheDocument();
     fireEvent.click(headers[4]!);
-    expect(
-      within(headers[4]!.parentElement!).getByText("pnpm-lock.yaml"),
-    ).toBeInTheDocument();
+    const boilerplate = screen.getByRole("group", { name: "Boilerplate" });
+    expect(within(boilerplate).getByText("pnpm-lock.yaml")).toBeInTheDocument();
 
     expect(screen.getByRole("img", { name: "1 open finding" })).toBeInTheDocument();
-    const line = screen.getByText("added in src/a.ts").parentElement!.parentElement!;
+    const line = screen.getByRole("group", { name: "Line 2" });
+    expect(within(line).getByText("added in src/a.ts")).toBeInTheDocument();
     expect(within(line).getByText("Unchecked input")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Original order" }));
@@ -139,6 +139,16 @@ describe("DiffTab", () => {
     expect(screen.queryByRole("button", { name: GROUP_NAME })).not.toBeInTheDocument();
     expect(shownPaths()).toEqual(PATHS);
     expect(screen.getByText("Unchecked input")).toBeInTheDocument();
+  });
+
+  it("keeps an inline finding card mounted when the reviews are refetched", () => {
+    const view = render(tab("smart"));
+    const title = screen.getByText("Unchecked input");
+
+    api.reviews = [structuredClone(REVIEW)];
+    view.rerender(tab("smart"));
+
+    expect(screen.getByText("Unchecked input")).toBe(title);
   });
 
   it("shows the flat list while the smart diff is not available", () => {

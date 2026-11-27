@@ -13,7 +13,7 @@ import { RepoNotFound } from "@/components/repo-not-found";
 import { PrDetailHeader } from "./_components/PrDetailHeader";
 import { OverviewTab } from "./_components/OverviewTab";
 import { FindingsTab } from "./_components/FindingsTab";
-import { DiffTab } from "./_components/DiffTab";
+import { DiffTab, diffOrderParam, parseDiffOrder } from "./_components/DiffTab";
 import RunTraceDrawer from "./_components/RunTraceDrawer";
 import { usePullDetail, usePulls } from "../../../../../lib/hooks";
 import { useQueryClient } from "@tanstack/react-query";
@@ -24,7 +24,7 @@ import {
   usePrRuns,
   useDeleteRun,
   useRefreshReviewsOnRunSettled,
-} from "../../../../../lib/hooks/reviews";
+} from "@/lib/hooks/reviews";
 import { useRefreshIntentOnRunSettled } from "@/lib/hooks/intent";
 import { useActiveRepo, useRepoNotFound } from "../../../../../lib/repo-context";
 import { ApiError } from "../../../../../lib/api";
@@ -180,8 +180,8 @@ export default function PRDetailPage() {
             canComment={pr.status === "open"}
             repoFullName={repoFullName}
             headSha={pr.head_sha}
-            order={search.get("order") === "original" ? "original" : "smart"}
-            onOrderChange={(o) => setParam("order", o === "original" ? "original" : null)}
+            order={parseDiffOrder(search.get("order"))}
+            onOrderChange={(o) => setParam("order", diffOrderParam(o))}
           />
         )}
       </div>

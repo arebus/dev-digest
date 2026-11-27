@@ -1,6 +1,13 @@
 import { describe, it, expect } from "vitest";
 import type { FindingRecord, ReviewRecord, SmartDiff } from "@devdigest/shared";
-import { currentFindings, diffTotals, findingsByFile, toRoleGroups } from "./helpers";
+import {
+  currentFindings,
+  diffOrderParam,
+  diffTotals,
+  findingsByFile,
+  parseDiffOrder,
+  toRoleGroups,
+} from "./helpers";
 
 const finding = (id: string, kind = "finding"): FindingRecord => ({
   id,
@@ -65,6 +72,17 @@ describe("DiffTab helpers", () => {
       ["core", ["orphan.ts"]],
       ["tests", ["a.test.ts", "b.test.ts"]],
     ]);
+  });
+
+  it("reads and writes the order query param, with smart as the unlisted default", () => {
+    expect([null, "smart", "bogus", "original"].map(parseDiffOrder)).toEqual([
+      "smart",
+      "smart",
+      "smart",
+      "original",
+    ]);
+    expect(diffOrderParam("smart")).toBeNull();
+    expect(diffOrderParam("original")).toBe("original");
   });
 
   it("sums additions and deletions", () => {

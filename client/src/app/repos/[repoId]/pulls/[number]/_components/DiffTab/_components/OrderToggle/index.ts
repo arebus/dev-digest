@@ -1,2 +1,2 @@
 export { OrderToggle } from "./OrderToggle";
-export type { DiffOrder } from "./constants";
+export type { DiffOrder } from "./types";

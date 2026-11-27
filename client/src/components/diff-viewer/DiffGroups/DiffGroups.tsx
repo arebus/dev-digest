@@ -38,7 +38,7 @@ function GroupSection({ group, commenting, findings }: DiffGroupProps & { group:
   const keys = ROLE_MESSAGE_KEY[group.role];
 
   return (
-    <div>
+    <div role="group" aria-label={t(keys.label)}>
       <div {...disclosureProps(open, () => setOpen((o) => !o))} style={s.groupHeader}>
         <Icon.ChevronRight size={13} style={chevronFor(open)} />
         <span style={groupSwatchFor(ROLE_SWATCH[group.role])} />

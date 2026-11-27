@@ -16,8 +16,8 @@ import {
   useSmartDiff,
 } from "@/lib/hooks/reviews";
 import { notify } from "@/lib/toast";
-import type { FindingRecord, PrFile } from "@devdigest/shared";
-import { InlineFinding } from "./_components/InlineFinding";
+import type { PrFile } from "@devdigest/shared";
+import { FindingSlot, FindingSlotContext } from "./_components/FindingSlot";
 import { OrderToggle, type DiffOrder } from "./_components/OrderToggle";
 import { currentFindings, diffTotals, findingsByFile, toRoleGroups } from "./helpers";
 import { s } from "./styles";
@@ -53,19 +53,8 @@ export function DiffTab({
 
   const { data: reviews } = usePrReviews(prId);
   const byFile = React.useMemo(() => findingsByFile(currentFindings(reviews ?? [])), [reviews]);
-  // Stable component identity, so inline cards don't remount when data refetches.
-  const FindingSlot = React.useMemo(
-    () =>
-      function FindingSlot({ finding }: { finding: FindingRecord }) {
-        return (
-          <InlineFinding
-            finding={finding}
-            prId={prId}
-            repoFullName={repoFullName}
-            headSha={headSha}
-          />
-        );
-      },
+  const slotContext = React.useMemo(
+    () => ({ prId, repoFullName, headSha }),
     [prId, repoFullName, headSha],
   );
   const findings: DiffFindingApi = { byFile, FindingSlot };
@@ -117,11 +106,13 @@ export function DiffTab({
           {t("smartDiff.summary", { count: files.length, ...totals })}
         </span>
       </SectionLabel>
-      {order === "smart" && groups ? (
-        <DiffGroups groups={groups} commenting={commenting} findings={findings} />
-      ) : (
-        <DiffViewer files={files} commenting={commenting} findings={findings} />
-      )}
+      <FindingSlotContext.Provider value={slotContext}>
+        {order === "smart" && groups ? (
+          <DiffGroups groups={groups} commenting={commenting} findings={findings} />
+        ) : (
+          <DiffViewer files={files} commenting={commenting} findings={findings} />
+        )}
+      </FindingSlotContext.Provider>
     </section>
   );
 }

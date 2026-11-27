@@ -4,7 +4,7 @@ import type React from "react";
 import type { Severity } from "@devdigest/ui";
 import type { FindingRecord } from "@devdigest/shared";
 import { lineKey } from "./comments";
-import { SEVERITY_RANK } from "./constants";
+import { SEVERITY_RANK } from "@/lib/severity";
 
 /** What the viewer needs to show findings inline. */
 export interface DiffFindingApi {

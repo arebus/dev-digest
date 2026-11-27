@@ -41,9 +41,6 @@ function renderCard(list: FindingRecord[]) {
   );
 }
 
-/** The wrapper of one rendered diff line (row + whatever hangs under it). */
-const lineWrapper = (code: string) => screen.getByText(code).parentElement!.parentElement!;
-
 describe("FileCard findings", () => {
   it("marks the file and shows the finding under its line; unanchored ones go outside", () => {
     renderCard([
@@ -52,7 +49,8 @@ describe("FileCard findings", () => {
     ]);
     expect(screen.getByRole("img", { name: "2 open findings" })).toBeInTheDocument();
 
-    const line = lineWrapper("const b = 2;");
+    const line = screen.getByRole("group", { name: "Line 2" });
+    expect(within(line).getByText("const b = 2;")).toBeInTheDocument();
     expect(within(line).getByText("Anchored finding")).toBeInTheDocument();
     expect(within(line).getByText(SEV.WARNING.label)).toBeInTheDocument();
     expect(within(line).queryByText("Elsewhere finding")).not.toBeInTheDocument();

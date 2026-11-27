@@ -4,6 +4,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { SEV, SeverityBadge } from "@devdigest/ui";
 import type { FindingRecord } from "@devdigest/shared";
 import { commentTargetFor, type CommentThread, type DiffCommentApi, cs } from "../comments";
@@ -28,6 +29,7 @@ export function CodeLine({
   findings: FindingRecord[];
   FindingSlot?: DiffFindingApi["FindingSlot"];
 }) {
+  const t = useTranslations("shell");
   const [hover, setHover] = React.useState(false);
   const [composing, setComposing] = React.useState(false);
 
@@ -46,6 +48,11 @@ export function CodeLine({
 
   return (
     <div
+      // Only lines carrying findings are named, so a plain diff adds no group noise.
+      {...(findings.length > 0 && {
+        role: "group",
+        "aria-label": t("diffViewer.lineLabel", { line: ln.newNo ?? "" }),
+      })}
       style={cs.rowWrap}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
